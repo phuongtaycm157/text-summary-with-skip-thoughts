@@ -3,8 +3,9 @@ import pandas as pd
 import nltk
 import re
 import numpy as np
-from skip_thoughts import configuration
-from skip_thoughts import encoder_manager
+from gensim.models import Word2Vec
+from sklearn.cluster import KMeans
+from sklearn.metrics import pairwise_distances_argmin_min
 
 # 1. READING ARTICLE FROM DATASET
 dataset = pd.read_csv('crawl_textsummary.csv')
@@ -52,15 +53,41 @@ token_sents_text = [nltk.word_tokenize(sent) for sent in sents_of_text]
 token_sents_summary = [nltk.word_tokenize(sent) for sent in sents_of_summary]
 
 # 5. SENTENCE VECTOR
-VOCAB_FILE = "skip_thoughts/pretrained/skip_thoughts_uni_2017_02_02/vocab.txt"
-EMBEDDING_MATRIX_FILE = "skip_thoughts/pretrained/skip_thoughts_uni_2017_02_02/embeddings.npy"
-CHECKPOINT_PATH = "skip_thoughts/pretrained/skip_thoughts_uni_2017_02_02/model.ckpt-501424"
+w2v = Word2Vec.load("en_txt\en.bin")
 
-encoder = encoder_manager.EncoderManager()
-encoder.load_model(configuration.model_config(bidirectional_encoder=False),
-                   vocabulary_file=VOCAB_FILE,
-                   embedding_matrix_file=EMBEDDING_MATRIX_FILE,
-                   checkpoint_path=CHECKPOINT_PATH)
+vocab = w2v.wv.index_to_key
 
-encodings = encoder.encode(token_sents_summary)
-print(encodings)
+X = []
+
+for sent in token_sents_text:
+  sent_vec = np.zeros((300))
+  for word in sent:
+    if word in vocab:
+      sent_vec+=w2v.wv[word]
+  X.append(sent_vec)
+
+# y = []
+
+# for sent in token_sents_summary:
+#   sent_vec = np.zeros((300))
+#   for word in sent:
+#     if word in vocab:
+#       sent_vec+=wv.wv[word]
+#   y.append(sent_vec)
+
+n_clusters = len(X)//3
+
+kmeans = KMeans(n_clusters=n_clusters)
+kmeans = kmeans.fit(X)
+
+avg = []
+for j in range(n_clusters):
+  idx = np.where(kmeans.labels_ == j)[0]
+  avg.append((np.mean(idx)))
+
+closest, _ = pairwise_distances_argmin_min(kmeans.cluster_centers_, X)
+ordering = sorted(range(n_clusters), key=lambda k: avg[k])
+summary_result = '. '.join([sents_of_text[closest[idx]] for idx in ordering])
+print(summary)
+print('=================================')
+print(summary_result)
