@@ -17,6 +17,17 @@ text = dataset.iloc[0].content
   # Get stopwords
 stopwords = nltk.corpus.stopwords.words('english')
 
+def lite_split_sentence(content):
+  contents_parsed = re.sub('\n', ' ', content) #Đổi các ký tự xuống dòng thành chấm câu
+  contents_parsed = re.sub(r'\([^)]*\)', '', contents_parsed)
+  contents_parsed = re.sub(r'\s+', ' ', contents_parsed)
+  
+
+  sentences = nltk.sent_tokenize(contents_parsed)
+
+  return sentences
+
+
 def text_strip(text):
   # Loại bỏ các ký tự đặt biệt, khoản trắng thừa, giữ .
   newString = text.lower()
@@ -51,6 +62,7 @@ def Summary(text, brif=0.3):
   new_text = text_strip(text)
 
   # 2. to sentences
+  sentences = lite_split_sentence(text)
   sents_of_text = text_to_sents(new_text)
 
   # 3. tokenized sentences
@@ -79,7 +91,7 @@ def Summary(text, brif=0.3):
     avg.append((np.mean(idx)))
   closest, _ = pairwise_distances_argmin_min(kmeans.cluster_centers_, X)
   ordering = sorted(range(n_clusters), key=lambda k: avg[k])
-  summary = '.\n'.join([sents_of_text[closest[idx]] for idx in ordering])
+  summary = '\n'.join([sentences[closest[idx]] for idx in ordering])
 
   return summary
 
